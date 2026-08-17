@@ -56,3 +56,37 @@ zestaw sekcji/pokoi).
   pokoi danego typu (nie osobna, sztywna lista).
 - "wykonamy to sami" usunięte z pozycji typu "urząd" (dokument+opłata) -
   tam nie ma sensu, zostaje przy materiał+wykonawca i szacowana wycena.
+
+## Wdrożenie na Render
+
+### Opcja A: jednym kliknięciem (Blueprint)
+1. Wrzuć ten folder do repozytorium na GitHubie/GitLabie.
+2. Na render.com: New → Blueprint → wskaż repo. Render odczyta `render.yaml`
+   i sam utworzy usługę web + darmową bazę PostgreSQL, wygeneruje SECRET_KEY
+   i podłączy DATABASE_URL automatycznie.
+3. Kliknij Apply - gotowe.
+
+### Opcja B: ręcznie
+1. New → Web Service → wskaż repo.
+2. Build Command: `pip install -r requirements.txt`
+3. Start Command: `gunicorn app:app`
+4. W Environment Variables ustaw:
+   - `SECRET_KEY` - dowolny losowy ciąg znaków (np. `python -c "import secrets; print(secrets.token_hex(32))"`)
+   - `DATABASE_URL` - jeśli chcesz trwałą bazę, dodaj osobno darmową bazę
+     PostgreSQL w Render (New → PostgreSQL) i wklej tu jej "Internal
+     Connection String". Bez tego apka spadnie na SQLite w lokalnym
+     systemie plików kontenera - a ten **kasuje się przy każdym redeployu**,
+     więc do produkcji koniecznie użyj PostgreSQL.
+
+### Uwaga: zdjęcia inspiracji
+Render ma efemeryczny system plików (poza płatnym "Persistent Disk") -
+przesłane zdjęcia w `static/uploads/` znikną przy restarcie/redeployu
+kontenera, nawet z podłączoną bazą PostgreSQL. Do trwałego przechowywania
+zdjęć w produkcji docelowo warto podłączyć zewnętrzny storage (np. S3,
+Cloudinary) - to nie jest jeszcze zrobione w tej wersji.
+
+### Zmienne środowiskowe (podsumowanie)
+- `SECRET_KEY` - wymagane w produkcji (inaczej sesje logowania są niebezpieczne)
+- `DATABASE_URL` - opcjonalne; brak = SQLite lokalnie (nietrwałe na Render)
+- `PORT` - Render ustawia automatycznie, nie trzeba nic robić
+- `FLASK_DEBUG` - ustaw na `0` w produkcji (już w render.yaml)
